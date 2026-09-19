@@ -1,0 +1,27 @@
+# docker-compose.yml — local testing harness
+# Spins up a fake vulnerable target (a simple 404 server returning takeover signatures)
+# so you can test hostage without scanning real infrastructure.
+#
+#   docker compose up -d fake-target
+#   echo "fake-target.local" | docker compose run --rm hostage - @-
+#
+version: "3.9"
+
+services:
+  fake-target:
+    image: nginx:alpine
+    container_name: hostage-fake-target
+    ports:
+      - "18080:80"
+    volumes:
+      - ./test/fixtures/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./test/fixtures/404.html:/usr/share/nginx/html/404.html:ro
+
+  hostage:
+    build: .
+    container_name: hostage-cli
+    depends_on: [fake-target]
+    volumes:
+      - ./test/fixtures:/data:ro
+    entrypoint: ["hostage"]
+    command: ["@/data/test-subs.txt"]

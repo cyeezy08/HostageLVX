@@ -1,0 +1,36 @@
+# Binaries
+hostage
+hostage.exe
+hostage-linux-amd64
+hostage-windows-amd64.exe
+hostage-darwin-arm64
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go workspace
+go.work
+go.work.sum
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test fixtures with real target data — do NOT commit
+subs.txt
+real-*
+findings.json
+findings.jsonl
+*.real.txt

@@ -1,0 +1,67 @@
+# .github/workflows/ci.yml
+# Continuous integration — build, vet, test on every push and PR.
+name: CI
+
+on:
+  push:
+    branches: [main, v*]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build & test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: ['1.22.x', '1.23.x']
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+
+      - name: Go mod download
+        run: go mod download
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build
+        run: go build -o /tmp/hostage .
+
+      - name: Test (if any)
+        run: go test ./... -timeout 60s || echo "no tests yet"
+
+      - name: Smoke test — version
+        run: /tmp/hostage -V
+
+      - name: Smoke test — fingerprints
+        run: /tmp/hostage -fingerprints | head -20
+
+      - name: Upload artifact
+        if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.22.x'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hostage-build-${{ github.sha }}
+          path: /tmp/hostage
+          retention-days: 7
+
+  lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout 5m

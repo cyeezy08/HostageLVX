@@ -1,0 +1,6 @@
+# test/fixtures/test-subs.txt — sample input for local docker testing
+# Replace with your own authorized targets before scanning anything real.
+127.0.0.1
+localhost
+fake-target.local
+heroku-fake.local
