@@ -1,218 +1,158 @@
 package main
 
 import (
-	"context"
-	"flag"
-	"fmt"
-	"os"
-	"sort"
-	"strings"
-	"time"
+    "context"
+    "flag"
+    "fmt"
+    "io"
+    "os"
+    "sort"
+    "strings"
+    "sync"
+    "time"
 )
 
-var version = "dev"
+const version = "0.3.0"
 
-var Fingerprints = map[string]string{
-	"Heroku":       "No such app",
-	"GitHub Pages": "There isn't a GitHub Pages site here",
-	"Cloudflare":   "Error 1000",
-}
+const banner = ` _   _ _____ _____            _      ___  ___
+| | | |_   _|  ___| __ ___  _| |    / _ \/ __|
+| |_| | | | | |_ | '__/ _ \(_)_|   | | | \__ \
+|  _  | | | |  _|| | | (_) | _     | |_| |___) |
+|_| |_| |_| |_|  |_|  \___/(_)     \___/|____/`
 
-type Verdict string
-
-type Finding struct {
-	Host    string
-	Verdict Verdict
-	Service string
-	Note    string
-	IP      string
-	CNAME   string
-	Status  int
-	Server  string
-	Tech    []string
-}
-
-func (f *Finding) TakeoverCapable() bool {
-	if f == nil {
-		return false
-	}
-	return f.Verdict == Verdict("takeover")
-}
-
-func sevIndex(v Verdict) int {
-	switch v {
-	case Verdict("takeover"):
-		return 0
-	case Verdict("likely"):
-		return 1
-	case Verdict("alive"):
-		return 2
-	case Verdict("no_dns"):
-		return 3
-	default:
-		return 4
-	}
-}
-
-type Resolver struct{}
-
-func NewResolver(dnsServer, resolverMethod string, timeout time.Duration) *Resolver {
-	return &Resolver{}
-}
-
-type WildcardRegistry struct{}
-
-func NewWildcardRegistry(res *Resolver, useCanary bool) *WildcardRegistry {
-	return &WildcardRegistry{}
-}
-
-func (r *WildcardRegistry) Build(ctx context.Context, targets []string, timeout time.Duration) {}
-
-func (r *WildcardRegistry) Apply(findings []*Finding) {}
-
-func ScanHost(ctx context.Context, host string, res *Resolver, timeout time.Duration) *Finding {
-	return &Finding{
-		Host:    host,
-		Verdict: Verdict("alive"),
-		Service: "generic",
-		IP:      "127.0.0.1",
-	}
-}
-
-func Render(findings []*Finding, compact bool) string {
-	if len(findings) == 0 {
-		return "[=] 0 scanned"
-	}
-	sort.SliceStable(findings, func(i, j int) bool { return sevIndex(findings[i].Verdict) < sevIndex(findings[j].Verdict) })
-
-	var lines []string
-	for _, f := range findings {
-		if f == nil {
-			continue
-		}
-		line := fmt.Sprintf("[%s] %s", strings.ToUpper(string(f.Verdict)), f.Host)
-		if f.Service != "" {
-			line += fmt.Sprintf(" (%s)", f.Service)
-		}
-		if f.Note != "" {
-			line += " - " + f.Note
-		}
-		lines = append(lines, line)
-	}
-	return strings.Join(lines, "\n")
-}
-
-func demoTargets() []string {
-	return []string{
-		"api.example.com",
-		"admin.example.com",
-		"legacy.example.com",
-		"staging.example.com",
-		"cdn.example.com",
-		"shop.example.com",
-	}
-}
-
-func brandHeader(name string) string {
-	brand := strings.TrimSpace(strings.ToUpper(name))
-	if brand == "" {
-		brand = "LEVIATHAN.AC"
-	}
-	return fmt.Sprintf(" %s // HOSTAGE LVX // LIVE SWARM OPS ", brand)
+func printBanner(color bool) {
+    shades := []string{Red, "\033[38;5;202m", "\033[38;5;208m", "\033[38;5;214m", "\033[38;5;220m"}
+    for i, ln := range strings.Split(banner, "\n") {
+        if color {
+            fmt.Println(shades[i%len(shades)] + ln + Reset)
+        } else {
+            fmt.Println(ln)
+        }
+    }
+    fmt.Println()
+    fmt.Println("  " + Paint("leviathan.ac", Bold+Red, color) + Paint(" - rapid dangling-DNS & takeover engine", Dim, color))
+    fmt.Println("  " + Paint(fmt.Sprintf("v%s - %d fingerprints - authorized scope only", version, len(Fingerprints)), Dim, color))
+    fmt.Println()
 }
 
 func main() {
-	var (
-		tui          bool
-		demoMode     bool
-		fingerprints bool
-		jsonl        bool
-		silent       bool
-		noColor      bool
-		showVersion  bool
-		outFile      string
-		threads      int
-		timeout      float64
-		resolver     string
-		dnsServer    string
-		noWildcard   bool
-	)
+    var (
+        threads    = flag.Int("t", 50, "concurrent workers")
+        timeoutS   = flag.Float64("timeout", 8.0, "per-request DNS/HTTP timeout (seconds)")
+        resolver   = flag.String("resolver", "doh", "doh (rapid, 1-query chains) or system")
+        dnsServer  = flag.String("dns-server", "", "custom UDP resolver IP (forces system mode)")
+        asJSON     = flag.Bool("json", false, "JSONL output, one finding per line (PD-style)")
+        silent     = flag.Bool("silent", false, "only print TAKEOVER/LIKELY hits")
+        outFile    = flag.String("o", "", "save findings to file (JSONL with -json, text otherwise)")
+        showFPs    = flag.Bool("fingerprints", false, "print the fingerprint database and exit")
+        noColor    = flag.Bool("no-color", false, "disable colored output")
+        noWildcard = flag.Bool("no-wildcard-check", false, "skip wildcard-DNS canary detection")
+        showVer    = flag.Bool("V", false, "print version and exit")
+    )
+    flag.Parse()
 
-	fs := flag.NewFlagSet("hostage", flag.ContinueOnError)
-	fs.BoolVar(&tui, "tui", false, "run interactive TUI")
-	fs.BoolVar(&demoMode, "demo", false, "run a live demo board")
-	fs.BoolVar(&fingerprints, "fingerprints", false, "print fingerprint database and exit")
-	fs.BoolVar(&jsonl, "json", false, "write JSONL output")
-	fs.BoolVar(&silent, "silent", false, "only print confirmed takeover candidates")
-	fs.BoolVar(&noColor, "no-color", false, "disable color")
-	fs.BoolVar(&showVersion, "V", false, "print version and exit")
-	fs.StringVar(&outFile, "o", "", "write output to file")
-	fs.IntVar(&threads, "t", 50, "concurrent workers")
-	fs.Float64Var(&timeout, "timeout", 8.0, "per-request timeout in seconds")
-	fs.StringVar(&resolver, "resolver", "doh", "resolver mode")
-	fs.StringVar(&dnsServer, "dns-server", "", "custom UDP resolver")
-	fs.BoolVar(&noWildcard, "no-wildcard-check", false, "disable wildcard detection")
-	fs.SetOutput(os.Stderr)
+    if *showVer {
+        fmt.Println("hostage", version)
+        return
+    }
+    if *showFPs {
+        fmt.Printf("hostage v%s - fingerprint database\n\n", version)
+        fmt.Println(RenderFingerprints(ColorEnabled(*noColor)))
+        return
+    }
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
-		os.Exit(2)
-	}
+    timeout := time.Duration(*timeoutS * float64(time.Second))
 
-	if showVersion {
-		fmt.Println(version)
-		return
-	}
+    targets := ParseTargets(flag.Args(), os.Stdin)
+    if len(targets) == 0 {
+        if fi, err := os.Stdin.Stat(); err == nil && fi.Mode()&os.ModeCharDevice == 0 {
+            targets = ParseTargets([]string{"-"}, os.Stdin)
+        }
+    }
+    if len(targets) == 0 {
+        flag.Usage()
+        fmt.Fprintln(os.Stderr, "\nerror: no targets (hosts, @file, stdin pipe)")
+        os.Exit(2)
+    }
 
-	if fingerprints {
-		for name, pattern := range Fingerprints {
-			fmt.Printf("%s: %s\n", name, pattern)
-		}
-		return
-	}
+    findings, reg := Run(targets, *threads, timeout, *dnsServer, *resolver, !*noWildcard)
 
-	if demoMode {
-		os.Exit(runDemoTUI())
-	}
+    color := ColorEnabled(*noColor)
+    var sink io.Writer = os.Stdout
+    if *outFile != "" {
+        fh, err := os.Create(*outFile)
+        if err != nil {
+            fmt.Fprintln(os.Stderr, "hostage: cannot create output file:", err)
+            os.Exit(2)
+        }
+        defer fh.Close()
+        sink = fh
+    }
 
-	if len(fs.Args()) == 0 {
-		fmt.Fprintln(os.Stderr, "hostage: no targets supplied")
-		os.Exit(2)
-	}
+    switch {
+    case *asJSON:
+        WriteJSONL(findings, sink)
+    case *silent:
+        for _, f := range findings {
+            if f.TakeoverCapable() {
+                fmt.Fprintln(sink, HotLine(f, color && sink == os.Stdout))
+            }
+        }
+    default:
+        if sink == os.Stdout {
+            if color {
+                printBanner(true)
+            }
+            if n := reg.ActiveCanaries(); n > 0 {
+                fmt.Println(Paint(fmt.Sprintf("  wildcard canaries: %d zone(s) - parking noise auto-nulled", n), Dim, color))
+            }
+            fmt.Println(Render(findings, color))
+        } else {
+            fmt.Fprint(sink, Render(findings, false)+"\n")
+            fmt.Printf("results saved to %s\n", *outFile)
+        }
+    }
 
-	wildcard := !noWildcard
-	if tui {
-		code := runTUI(fs.Args(), threads, time.Duration(timeout*float64(time.Second)), dnsServer, resolver, wildcard)
-		os.Exit(code)
-	}
+    for _, f := range findings {
+        if f.TakeoverCapable() {
+            os.Exit(1)
+        }
+    }
+}
 
-	results := make([]*Finding, 0, len(fs.Args()))
-	for _, target := range fs.Args() {
-		results = append(results, ScanHost(context.Background(), target, NewResolver(dnsServer, resolver, time.Duration(timeout*float64(time.Second))), time.Duration(timeout*float64(time.Second))))
-	}
+func Run(targets []string, threads int, timeout time.Duration, dnsServer, resolverMethod string, wildcard bool) ([]*Finding, *WildcardRegistry) {
+    res := NewResolver(dnsServer, resolverMethod, timeout)
+    reg := NewWildcardRegistry(res, !wildcard)
+    reg.Build(context.Background(), targets, timeout)
 
-	if jsonl {
-		for _, item := range results {
-			fmt.Printf("%s\n", item.Host)
-		}
-		return
-	}
+    findings := make([]*Finding, len(targets))
+    sem := make(chan struct{}, max(1, threads))
+    var wg sync.WaitGroup
+    for i, host := range targets {
+        wg.Add(1)
+        go func(i int, host string) {
+            defer wg.Done()
+            sem <- struct{}{}
+            defer func() { <-sem }()
+            findings[i] = ScanHost(context.Background(), host, res, timeout)
+        }(i, host)
+    }
+    wg.Wait()
 
-	if silent {
-		for _, item := range results {
-			if item.TakeoverCapable() {
-				fmt.Println(item.Host)
-			}
-		}
-		return
-	}
+    reg.Apply(findings)
+    sort.SliceStable(findings, func(i, j int) bool {
+        si, sj := sevIndex(findings[i].Verdict), sevIndex(findings[j].Verdict)
+        if si != sj {
+            return si < sj
+        }
+        return findings[i].Host < findings[j].Host
+    })
+    return findings, reg
+}
 
-	if outFile != "" {
-		if err := os.WriteFile(outFile, []byte(Render(results, false)), 0o644); err != nil {
-			fmt.Fprintf(os.Stderr, "hostage: %v\n", err)
-			os.Exit(2)
-		}
-		return
-	}
-
-	fmt.Println(Render(results, false))
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
 }
