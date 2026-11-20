@@ -1,15 +1,17 @@
-<div align="center">
+<p align="center">
+  <img src="assets/leviathan-x-header.svg" alt="Leviathan X: HostageLVX dangling DNS verification" width="100%">
+</p>
 
-# HOSTAGE LVX
+# HostageLVX
 
-A fast, scope-aware dangling-DNS and takeover engine for real operators.
+**Evidence-backed dangling DNS classification for authorized infrastructure.**
 
-[![CI](https://img.shields.io/badge/CI-live-cyan?style=for-the-badge&logo=githubactions&logoColor=black)](./.github/workflows/ci.yml)
-[![Release](https://img.shields.io/badge/Release-v0.3.0-00d9ff?style=for-the-badge&logo=github&logoColor=black)](../../releases/latest)
-[![License](https://img.shields.io/badge/License-MIT-111111?style=for-the-badge)](./LICENSE)
-[![Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/leviathan-offsec/HostageLVX?quickstart=1)
+HostageLVX is a standalone Go tool in the **Leviathan X** tooling suite. It evaluates DNS and service responses, applies provider fingerprints, and reports potential dangling configurations with context for human verification.
 
-</div>
+[![CI](https://github.com/cyeezy08/HostageLVX/actions/workflows/ci.yml/badge.svg)](https://github.com/cyeezy08/HostageLVX/actions/workflows/ci.yml)
+[Releases](https://github.com/cyeezy08/HostageLVX/releases) | [Security policy](SECURITY.md) | [MIT license](LICENSE)
+
+> Only test infrastructure you own or are explicitly authorized to assess. A matching provider fingerprint does not establish that a takeover is possible.
 
 `hostage` resolves a list of targets, fingerprints the HTTP surface, and highlights takeover-prone endpoints with low false-positive noise. It is designed for reusable recon workflows, operator tooling, and CI-friendly scanning.
 
@@ -34,18 +36,9 @@ brew install leviathan-offsec/tap/hostage
 hostage --help
 ```
 
-### One-line installer (curl | sh)
+### Installer script
 
-
-```bash
-curl -sSL https://raw.githubusercontent.com/leviathan-offsec/HostageLVX/main/install.sh | sh
-```
-
-Install into a specific directory:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/leviathan-offsec/HostageLVX/main/install.sh | sh -s -- -b /usr/local/bin
-```
+The repository includes [install.sh](install.sh). Review its contents before running it, or prefer the documented Go install and published release artifacts.
 
 ### Prebuilt binary
 
@@ -191,9 +184,11 @@ make lint        # golangci-lint
 make docker      # build docker image
 ```
 
-### Codespaces
+## Evidence and limitations
 
-[![Open in Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/leviathan-offsec/HostageLVX?quickstart=1)
+HostageLVX reports classification signals, not guaranteed exploitation. DNS wildcards, provider defaults, rate limits, inaccessible responses, untested services and stale provider fingerprints can affect outcomes. Confirm any flagged condition against your documented scope and the applicable provider before reporting it as a finding.
+
+This repo is a tool, not the Leviathan X hosted platform. It does not claim to run a continuous production monitoring service.
 
 ---
 
@@ -213,8 +208,8 @@ PRs are welcome for new fingerprints, bug fixes, and platform improvements. Keep
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT, see [LICENSE](./LICENSE).
 
 ---
 
-Built by [@cyeezy08](https://github.com/cyeezy08) and published under the Leviathan OffSec tooling stack.
+**Leviathan X tooling:** [FenrirLVX](https://github.com/cyeezy08/FenrirLVX) for WordPress advisory correlation and [surfacediff](https://github.com/cyeezy08/surfacediff) for historical asset changes. The tools remain standalone; a unified API is not claimed as shipped here.
