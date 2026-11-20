@@ -30,7 +30,7 @@ func printBanner(color bool) {
 		}
 	}
 	fmt.Println()
-	fmt.Println("  " + Paint("leviathan.ac", Bold+Red, color) + Paint(" - rapid dangling-DNS & takeover engine", Dim, color))
+	fmt.Println("  " + Paint("LEVIATHAN X", Bold+Red, color) + Paint(" - rapid dangling-DNS & takeover engine", Dim, color))
 	fmt.Println("  " + Paint(fmt.Sprintf("v%s - %d fingerprints - authorized scope only", version, len(Fingerprints)), Dim, color))
 	fmt.Println()
 }
