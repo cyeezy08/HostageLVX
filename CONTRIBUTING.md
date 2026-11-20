@@ -50,7 +50,7 @@ project is against.
 Go 1.23 or newer:
 
 ```bash
-git clone https://github.com/leviathan-offsec/HostageLVX.git
+git clone https://github.com/cyeezy08/HostageLVX.git
 cd HostageLVX
 go test ./... -race -count=1
 golangci-lint run
