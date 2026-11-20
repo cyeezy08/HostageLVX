@@ -32,6 +32,8 @@ HostageLVX is a standalone Go tool in the **Leviathan X** tooling suite. It eval
 
 ## Real offline CLI demonstration
 
+A [GitHub Actions capture](https://github.com/cyeezy08/HostageLVX/actions/workflows/offline-demo.yml) now produces a downloadable SVG and raw text from the **actual compiled fingerprint catalogue**. This is an offline CLI capture, not a claimed takeover or live target recording. The terminal art above is a project mark, not a scan screenshot.
+
 Run `bash scripts/live-demo.sh` to build the current source and display **actual** version and fingerprint catalogue output. If `asciinema` is installed, it also records a terminal session as `demo.cast`. This path does not scan any internet host. Do not present the catalogue as confirmed vulnerabilities or a live scan.
 
 The existing demo script previously referenced a CLI flag that did not exist. This corrected path is also exercised in CI.
