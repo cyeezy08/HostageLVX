@@ -1,0 +1,42 @@
+name: Recorded offline CLI demo
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Capture real offline CLI output
+        shell: bash
+        run: |
+          mkdir -p dist
+          go run . -fingerprints > dist/output.txt
+          python3 scripts/terminal_snapshot.py --input dist/output.txt --output dist/terminal.svg --title "HOSTAGELVX / FINGERPRINTS" --accent "#F6B44A"
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          source = Path("dist/output.txt").read_text()
+          assert source.strip(), "the tool produced no output"
+          root = ET.parse("dist/terminal.svg").getroot()
+          assert root.tag.endswith("svg"), "invalid terminal SVG"
+          assert len(source) > 4
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hostagelvx-real-cli
+          path: |
+            dist/output.txt
+            dist/terminal.svg
+          retention-days: 30
