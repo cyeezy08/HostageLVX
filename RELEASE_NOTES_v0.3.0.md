@@ -1,6 +1,6 @@
 # v0.3.0 — first public release
 
-`hostage` is a rapid dangling-DNS & subdomain takeover scanner built for [Leviathan X](https://leviathan.ac). It resolves a list of subdomains, fingerprints HTTP responses, and flags takeover candidates. Standalone Go binary, no platform dependency, no API key, no backend.
+`hostage` is a rapid dangling-DNS & subdomain takeover scanner built for [Leviathan X](https://leviathanx.org). It resolves a list of subdomains, fingerprints HTTP responses, and flags takeover candidates. Standalone Go binary, no platform dependency, no API key, no backend.
 
 ## Highlights
 
