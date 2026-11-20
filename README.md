@@ -27,6 +27,14 @@ HostageLVX is a standalone Go tool in the **Leviathan X** tooling suite. It eval
 
 ---
 
+## Real offline CLI demonstration
+
+Run `bash scripts/live-demo.sh` to build the current source and display **actual** version and fingerprint catalogue output. If `asciinema` is installed, it also records a terminal session as `demo.cast`. This path does not scan any internet host. Do not present the catalogue as confirmed vulnerabilities or a live scan.
+
+The existing demo script previously referenced a CLI flag that did not exist. This corrected path is also exercised in CI.
+
+---
+
 ## Install
 
 ### Via Homebrew (macOS & Linux)
