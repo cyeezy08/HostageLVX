@@ -1,6 +1,9 @@
-<p align="center">
-  <img src="assets/leviathan-x-header.svg" alt="Leviathan X: HostageLVX dangling DNS verification" width="100%">
-</p>
+```text
+  +-- H O S T A G E ------------------------------------+
+  | DNS  -->  PROVIDER EVIDENCE  -->  VERDICT          |
+  | A missing record is not proof of takeover.        |
+  +---------------------------------------- LEVIATHAN X
+```
 
 # HostageLVX
 
