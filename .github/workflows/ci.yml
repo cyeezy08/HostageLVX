@@ -71,6 +71,11 @@ jobs:
       # Proves the resolver accepts what the README tells people to type. It
       # silently failed on every target before, and the only symptom was a
       # per-target "probe failed" that reads like a network problem.
+      - name: Offline CLI demo smoke test
+        if: matrix.os == 'ubuntu-latest' && matrix.go-version == '1.24.x'
+        shell: bash
+        run: bash scripts/live-demo.sh
+
       - name: Smoke test, custom resolver accepts host:port
         run: go run . -dns-server 1.1.1.1:53 -fingerprints | head -5
 
