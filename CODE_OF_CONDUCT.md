@@ -40,7 +40,7 @@ this project. It also applies to private messages about the project.
 
 ## Enforcement
 
-Report to **conduct@leviathan.ac**. I will read it, and I will act on it.
+Report to **admin@leviathanx.org**. The project will review reports and respond where appropriate.
 
 Responses, in escalating order: a private word, a public correction, a temporary
 ban, a permanent ban. Which one depends on what happened, not on how important
