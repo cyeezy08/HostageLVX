@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability in this tool
 
-Email **security@leviathan.ac**. Do not open a public issue.
+Email **admin@leviathanx.org**. Do not open a public issue.
 
 Please include the version or commit, the command, and the input. If the
 vulnerability only triggers against a live target, describe the shape of the
