@@ -40,7 +40,7 @@ The existing demo script previously referenced a CLI flag that did not exist. Th
 ### Via Homebrew (macOS & Linux)
 
 ```bash
-brew install leviathan-offsec/tap/hostage
+brew install cyeezy08/tap/hostage
 hostage --help
 ```
 
