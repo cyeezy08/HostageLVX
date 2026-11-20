@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -32,7 +32,6 @@ var probeClient = &http.Client{
 			Timeout:   8 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
 		MaxIdleConns:          200,
 		MaxIdleConnsPerHost:   8,
 		IdleConnTimeout:       60 * time.Second,
@@ -40,7 +39,9 @@ var probeClient = &http.Client{
 		ResponseHeaderTimeout: 8 * time.Second,
 	},
 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
-		if len(via) >= 10 {
+		// Never follow redirects outside the original scheme and authority.
+		if len(via) >= 10 || (len(via) > 0 &&
+			(req.URL.Scheme != via[0].URL.Scheme || !strings.EqualFold(req.URL.Host, via[0].URL.Host))) {
 			return http.ErrUseLastResponse
 		}
 		return nil
@@ -62,19 +63,26 @@ func Probe(ctx context.Context, host string, timeout time.Duration) *ProbeResult
 		req.Header.Set("Accept", "*/*")
 
 		resp, err := probeClient.Do(req)
-		cancel()
 		if err != nil {
+			cancel()
 			res.Err = err.Error()
 			continue
 		}
-		// A short read is not a clean probe. Discarding the error here used to leave
-		// res.OK true with a silently truncated body, and the body hash is the
-		// evidence field. A wrong hash is worse than a missing one, because it
-		// looks like a real observation of a different response.
-		body, err := io.ReadAll(io.LimitReader(resp.Body, maxBody))
-		_ = resp.Body.Close()
-		if err != nil {
-			res.Err = "response body truncated: " + err.Error()
+		// Keep the request context alive until the body is consumed. Cancelling
+		// immediately after Do can abort a valid body before it is read.
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxBody+1))
+		closeErr := resp.Body.Close()
+		cancel()
+		if readErr != nil {
+			res.Err = "cannot read response body: " + readErr.Error()
+			continue
+		}
+		if closeErr != nil {
+			res.Err = "cannot close response body: " + closeErr.Error()
+			continue
+		}
+		if len(body) > maxBody {
+			res.Err = "response body exceeded evidence limit"
 			continue
 		}
 

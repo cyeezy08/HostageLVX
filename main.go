@@ -105,7 +105,7 @@ func main() {
 	switch {
 	case *asJSON:
 		if err := WriteJSONL(findings, sink); err != nil {
-			fmt.Fprintln(os.Stderr, "hostage: error writing json:", err)
+			failOutput(err)
 		}
 	case *silent:
 		for _, f := range findings {
