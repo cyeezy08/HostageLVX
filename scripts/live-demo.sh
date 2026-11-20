@@ -12,7 +12,7 @@ go build -o "$TEMP_DIR/hostage" .
 echo "[hostage] offline CLI demo: release/version and built-in fingerprint catalogue"
 "$TEMP_DIR/hostage" -V
 
-if command -v asciinema >/dev/null 2>&1; then
+if [ -t 1 ] && command -v asciinema >/dev/null 2>&1; then
   echo "[hostage] recording real CLI output to demo.cast"
   asciinema rec --overwrite --command "$TEMP_DIR/hostage -fingerprints" demo.cast
 else
